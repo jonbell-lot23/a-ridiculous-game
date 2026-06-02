@@ -244,7 +244,7 @@ export class ParkScene extends Phaser.Scene {
     const name  = ret ? ret.name : ((fem ? FEMALE_NAMES : MALE_NAMES)[Math.floor(Math.random() * 500)] ?? 'Billy')
     const thought = (ret ? ret.thought : (op ? THOUGHTS_POS : THOUGHTS_NEG)[Math.floor(Math.random() * 8)]) ?? 'WOW'
     const ci    = ret ? ret.charIdx : Math.floor(Math.random() * NUM_CHARS)
-    const useLPC = ret ? ret.useLPC : true  // all new spawns use LPC
+    const useLPC = ret ? ret.useLPC : false  // set true to use LPC layered sprites
     const lpcSkin  = ret ? ret.lpcSkin  : Math.floor(Math.random() * LPC_SKIN_TONES.length)
     const lpcHair  = ret ? ret.lpcHair  : Math.floor(Math.random() * LPC_HAIR_COLORS.length)
     const lpcShirt = ret ? ret.lpcShirt : Math.floor(Math.random() * LPC_SHIRT_COLORS.length)
