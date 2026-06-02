@@ -86,18 +86,18 @@ export class ParkScene extends Phaser.Scene {
 
   constructor() { super({ key: 'ParkScene' }) }
 
-  // ── Layout — proportional to actual viewport ─────────────────────────────────
-  private get W()       { return this.scale.width }
-  private get H()       { return this.scale.height }
-  private get parkH()   { return Math.round(this.H * 0.32) }   // ~32% of height
-  private get panelY()  { return this.parkH }
-  private get panelW()  { return this.W }
-  private get wallW()   { return Math.round(this.W * 0.50) }   // 50% of width
-  private get wallX()   { return Math.round(this.W * 0.249) }  // centred
-  private get viewY()   { return Math.round(this.parkH * 0.246) }
-  private get walkMax() { return Math.round(this.W * 0.96) }
-  private get lanes()   { return LANE_FRACS.map(f => Math.floor(this.parkH * f)) }
-  private get fs()      { return Math.max(2, Math.round(this.W / 195)) }
+  // ── Layout ───────────────────────────────────────────────────────────────────
+  private get W()       { return 390 }
+  private get H()       { return 700 }
+  private get parkH()   { return 224 }
+  private get panelY()  { return 224 }
+  private get panelW()  { return 390 }
+  private get wallW()   { return 195 }
+  private get wallX()   { return 97 }
+  private get viewY()   { return 55 }
+  private get walkMax() { return 374 }
+  private get lanes()   { return LANE_FRACS.map(f => Math.floor(224 * f)) }
+  private get fs()      { return 2 }
 
   // ── Preload ──────────────────────────────────────────────────────────────────
   preload() {
