@@ -3,20 +3,37 @@ import { EGA } from '../palette'
 import { print } from '../utils/font'
 import { MALE_NAMES, FEMALE_NAMES } from '../data/names'
 
-// ── Sprite sheet layout ───────────────────────────────────────────────────────
+// ── Legacy sprite sheet (characters.png) ─────────────────────────────────────
 // 512×640 — 40 modern civilians, 8 per row × 5 rows
-// Each character block: 64×128 px
-// Within each block: 3 frames × 4 directions, each frame 20×32 px
+// Each character block: 64×128 px  |  Each frame: 20×32 px
 // Directions: 0=front  1=right-walk  2=left-walk  3=back
 const BLOCK_W = 64, BLOCK_H = 128, FW = 20, FH = 32, CHARS_PER_ROW = 8, NUM_CHARS = 40
 
 function fk(ci: number, row: number, f: number) { return `${ci}:${row}:${f}` }
 
+// ── LPC layered sprite system ─────────────────────────────────────────────────
+// 576×256 — 9 frames × 4 directions (64×64 each)
+// Row 0=walk-down, Row 1=walk-left, Row 2=walk-right, Row 3=walk-up (back)
+const LPC_FW = 64, LPC_FH = 64, LPC_ROWS = 4, LPC_FRAMES = 9
+const LPC_SCALE = 0.45  // renders ~29×29 px, similar to legacy 20×32
+const LPC_ROW_WALK = 2  // walk-right, flip for leftward movement
+const LPC_ROW_BACK = 3  // back to viewer, used when at the wall
+
+const LPC_LAYERS = ['lpc_body','lpc_hair','lpc_pants','lpc_shirt'] as const
+type LPCLayer = typeof LPC_LAYERS[number]
+
+// Tint multipliers applied per-layer to achieve variation
+// Body: multiply against flesh-toned base for different skin tones
+const LPC_SKIN_TONES  = [0xFFFFFF, 0xFFCC88, 0xEEAA66, 0xCC8844, 0xAA6633, 0x884422]
+// Hair, pants, shirt: all gray-neutral base → tint cleanly to any color
+const LPC_HAIR_COLORS = [0x111111, 0x3D2010, 0x8B5E3C, 0xD4A056, 0xFFD700, 0xFF7700, 0xCCCCCC]
+const LPC_PANTS_COLORS = [0x1A2040, 0x3D2B10, 0x1A3A1A, 0x444444, 0xCC9933, 0x550011]
+const LPC_SHIRT_COLORS = [0xFF5555, 0x5577FF, 0x44BB44, 0xFFAA22, 0xAA44BB, 0x33AACC, 0xEEEEEE, 0xCC2244]
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const WALL_H = 5, WALL_Y = 20, BASE_SPEED = 36, MAX_PEOPLE = 22
 const P_STOP = 0.18, P_INTERACT = 0.55, P_PHONE = 0.28, P_RETURN = 0.22, P_CHAT = 0.20
 const LANE_FRACS = [0.14,0.21,0.28,0.35,0.43,0.51,0.59,0.67,0.75,0.83,0.91]
-const SPRITE_SCALE = 1.0
 
 type State = 'walking'|'slowing'|'viewing'|'phone'|'chatting'|'departing'|'gone'
 
@@ -30,7 +47,11 @@ interface Person {
   viewX:number; bob:number
   chatPartner:number|null; chatLine:string
   noticeTimer:number; noticeGlyph:string
+  // LPC fields
+  useLPC:boolean; lpcSkin:number; lpcHair:number; lpcShirt:number; lpcPants:number
 }
+
+type ReturnData = Pick<Person,'name'|'isFemale'|'opinion'|'visitCount'|'charIdx'|'color'|'thought'|'useLPC'|'lpcSkin'|'lpcHair'|'lpcShirt'|'lpcPants'>
 
 const CONVO_PAIRS: [string,string][] = [
   ['BEEN HERE BEFORE?','FIRST TIME!'],['AMAZING ISN\'T IT','YEAH WOW'],
@@ -50,15 +71,16 @@ const STATE_LABELS: Record<State,string> = {
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
 export class ParkScene extends Phaser.Scene {
-  private bg!:  Phaser.GameObjects.Graphics  // depth 0
-  private ui!:  Phaser.GameObjects.Graphics  // depth 100
-  private sprites = new Map<number, Phaser.GameObjects.Sprite>()
+  private bg!:  Phaser.GameObjects.Graphics
+  private ui!:  Phaser.GameObjects.Graphics
+  private sprites    = new Map<number, Phaser.GameObjects.Sprite>()
+  private lpcSprites = new Map<number, Phaser.GameObjects.Sprite[]>()
 
   private people:      Person[] = []
   private nextId =     0
   private spawnTimer = 0
   private selected:    Person | null = null
-  private returnQueue: { data: Pick<Person,'name'|'isFemale'|'opinion'|'visitCount'|'charIdx'|'color'|'thought'>; delay:number }[] = []
+  private returnQueue: { data: ReturnData; delay:number }[] = []
   private stats =      { total:0, stopped:0, phoned:0, returned:0 }
   private elapsed =    0
 
@@ -80,6 +102,7 @@ export class ParkScene extends Phaser.Scene {
   // ── Preload ──────────────────────────────────────────────────────────────────
   preload() {
     this.load.image('chars_raw', 'assets/characters.png')
+    for (const layer of LPC_LAYERS) this.load.image(layer, `assets/${layer.replace('lpc_','lpc-')}.png`)
   }
 
   // ── Create ───────────────────────────────────────────────────────────────────
@@ -87,28 +110,34 @@ export class ParkScene extends Phaser.Scene {
     this.bg = this.add.graphics().setDepth(0)
     this.ui = this.add.graphics().setDepth(100)
 
-    // Register frame regions from raw image
+    // Legacy character frames
     const tex = this.textures.get('chars_raw')
     for (let ci = 0; ci < NUM_CHARS; ci++) {
       const bx = (ci % CHARS_PER_ROW) * BLOCK_W
       const by = Math.floor(ci / CHARS_PER_ROW) * BLOCK_H
-      for (let row = 0; row < 4; row++) {
-        for (let f = 0; f < 3; f++) {
+      for (let row = 0; row < 4; row++)
+        for (let f = 0; f < 3; f++)
           tex.add(fk(ci, row, f), 0, bx + f * FW, by + row * FH, FW, FH)
-        }
-      }
+    }
+    for (let ci = 0; ci < NUM_CHARS; ci++) {
+      this.anims.create({ key: `${ci}:walk`, frames: [0,1,2].map(f => ({ key: 'chars_raw', frame: fk(ci, 1, f) })), frameRate: 6, repeat: -1 })
+      this.anims.create({ key: `${ci}:back`, frames: [0,1,2].map(f => ({ key: 'chars_raw', frame: fk(ci, 3, f) })), frameRate: 4, repeat: -1 })
     }
 
-    // Two animations per character: walk (right-facing) + back (at wall)
-    for (let ci = 0; ci < NUM_CHARS; ci++) {
+    // LPC frame registration — each layer shares the same grid layout
+    for (const layer of LPC_LAYERS) {
+      const t = this.textures.get(layer)
+      for (let row = 0; row < LPC_ROWS; row++)
+        for (let f = 0; f < LPC_FRAMES; f++)
+          t.add(`${row}_${f}`, 0, f * LPC_FW, row * LPC_FH, LPC_FW, LPC_FH)
       this.anims.create({
-        key: `${ci}:walk`,
-        frames: [0,1,2].map(f => ({ key: 'chars_raw', frame: fk(ci, 1, f) })),
-        frameRate: 6, repeat: -1,
+        key: `${layer}:walk`,
+        frames: Array.from({ length: LPC_FRAMES }, (_, f) => ({ key: layer, frame: `${LPC_ROW_WALK}_${f}` })),
+        frameRate: 8, repeat: -1,
       })
       this.anims.create({
-        key: `${ci}:back`,
-        frames: [0,1,2].map(f => ({ key: 'chars_raw', frame: fk(ci, 3, f) })),
+        key: `${layer}:back`,
+        frames: Array.from({ length: LPC_FRAMES }, (_, f) => ({ key: layer, frame: `${LPC_ROW_BACK}_${f}` })),
         frameRate: 4, repeat: -1,
       })
     }
@@ -136,9 +165,11 @@ export class ParkScene extends Phaser.Scene {
       if (e.delay <= 0) { this.spawnPerson(e.data); this.returnQueue.splice(i, 1) }
     }
 
-    // Clean up sprites for gone people
     for (const p of this.people) {
-      if (p.state === 'gone') { const s = this.sprites.get(p.id); if (s) { s.destroy(); this.sprites.delete(p.id) } }
+      if (p.state === 'gone') {
+        const s = this.sprites.get(p.id); if (s) { s.destroy(); this.sprites.delete(p.id) }
+        const ls = this.lpcSprites.get(p.id); if (ls) { ls.forEach(s => s.destroy()); this.lpcSprites.delete(p.id) }
+      }
     }
     this.people = this.people.filter(p => p.state !== 'gone')
     this.people.forEach(p => this.updatePerson(p, delta))
@@ -157,31 +188,53 @@ export class ParkScene extends Phaser.Scene {
 
   // ── Sprites ──────────────────────────────────────────────────────────────────
   private updateSprite(p: Person) {
-    let spr = this.sprites.get(p.id)
-    if (!spr) return
+    if (p.useLPC) { this.updateLPCSprite(p); return }
 
+    const spr = this.sprites.get(p.id)
+    if (!spr) return
     spr.x = p.x; spr.y = p.y
     spr.setDepth(1 + p.y / 1000)
 
     const atWall = p.state==='viewing'||p.state==='phone'||p.state==='chatting'
     const moving = p.state==='walking'||p.state==='departing'||p.state==='slowing'
     const key    = atWall ? `${p.charIdx}:back` : `${p.charIdx}:walk`
-
     if (moving || atWall) {
       if (spr.anims.currentAnim?.key !== key || !spr.anims.isPlaying) spr.anims.play(key, true)
     } else {
-      spr.anims.stop()
-      spr.setFrame(fk(p.charIdx, atWall ? 3 : 1, 0))
+      spr.anims.stop(); spr.setFrame(fk(p.charIdx, atWall ? 3 : 1, 0))
     }
-
-    // Walk frames face LEFT — flip to face right
     spr.setFlipX(!atWall && p.dir === 1)
     spr.clearTint()
     if (p.isReturn) spr.setTint(0xFFEE88)
   }
 
+  private updateLPCSprite(p: Person) {
+    const sprs = this.lpcSprites.get(p.id)
+    if (!sprs) return
+
+    const atWall = p.state==='viewing'||p.state==='phone'||p.state==='chatting'
+    const moving = p.state==='walking'||p.state==='departing'||p.state==='slowing'
+    const depth  = 1 + p.y / 1000
+
+    for (let i = 0; i < sprs.length; i++) {
+      const spr = sprs[i]!
+      spr.x = p.x; spr.y = p.y
+      spr.setDepth(depth + i * 0.0001)  // layers stack: body → hair → pants → shirt
+
+      const key = `${LPC_LAYERS[i]}:${atWall ? 'back' : 'walk'}`
+      if (moving || atWall) {
+        if (spr.anims.currentAnim?.key !== key || !spr.anims.isPlaying) spr.anims.play(key, true)
+      } else {
+        spr.anims.stop()
+        spr.setFrame(`${atWall ? LPC_ROW_BACK : LPC_ROW_WALK}_0`)
+      }
+      // Walk-right frames face right; flip for leftward movement
+      spr.setFlipX(!atWall && p.dir === -1)
+    }
+  }
+
   // ── Spawn ────────────────────────────────────────────────────────────────────
-  private spawnPerson(ret: Pick<Person,'name'|'isFemale'|'opinion'|'visitCount'|'charIdx'|'color'|'thought'>|null) {
+  private spawnPerson(ret: ReturnData | null) {
     const ls    = this.lanes
     const lane  = ls[Math.floor(Math.random() * ls.length)] ?? ls[0]!
     const dir   = (Math.random() < 0.5 ? 1 : -1) as 1|-1
@@ -191,6 +244,11 @@ export class ParkScene extends Phaser.Scene {
     const name  = ret ? ret.name : ((fem ? FEMALE_NAMES : MALE_NAMES)[Math.floor(Math.random() * 500)] ?? 'Billy')
     const thought = (ret ? ret.thought : (op ? THOUGHTS_POS : THOUGHTS_NEG)[Math.floor(Math.random() * 8)]) ?? 'WOW'
     const ci    = ret ? ret.charIdx : Math.floor(Math.random() * NUM_CHARS)
+    const useLPC = ret ? ret.useLPC : true  // all new spawns use LPC
+    const lpcSkin  = ret ? ret.lpcSkin  : Math.floor(Math.random() * LPC_SKIN_TONES.length)
+    const lpcHair  = ret ? ret.lpcHair  : Math.floor(Math.random() * LPC_HAIR_COLORS.length)
+    const lpcShirt = ret ? ret.lpcShirt : Math.floor(Math.random() * LPC_SHIRT_COLORS.length)
+    const lpcPants = ret ? ret.lpcPants : Math.floor(Math.random() * LPC_PANTS_COLORS.length)
 
     const p: Person = {
       id, name, isFemale: fem,
@@ -207,14 +265,26 @@ export class ParkScene extends Phaser.Scene {
       bob: Math.random()*Math.PI*2,
       chatPartner: null, chatLine: '',
       noticeTimer: 0, noticeGlyph: '',
+      useLPC, lpcSkin, lpcHair, lpcShirt, lpcPants,
     }
     this.people.push(p)
     this.stats.total++
     if (ret) this.stats.returned++
 
-    const spr = this.add.sprite(p.x, p.y, 'chars_raw', fk(ci, 1, 0))
-    spr.setScale(SPRITE_SCALE).setDepth(1 + p.y / 1000)
-    this.sprites.set(id, spr)
+    if (useLPC) {
+      const tints = [LPC_SKIN_TONES[lpcSkin]!, LPC_HAIR_COLORS[lpcHair]!, LPC_PANTS_COLORS[lpcPants]!, LPC_SHIRT_COLORS[lpcShirt]!]
+      const layerSprs: Phaser.GameObjects.Sprite[] = []
+      for (let i = 0; i < LPC_LAYERS.length; i++) {
+        const spr = this.add.sprite(p.x, p.y, LPC_LAYERS[i]!, `${LPC_ROW_WALK}_0`)
+        spr.setScale(LPC_SCALE).setDepth(1 + p.y / 1000 + i * 0.0001).setTint(tints[i]!)
+        layerSprs.push(spr)
+      }
+      this.lpcSprites.set(id, layerSprs)
+    } else {
+      const spr = this.add.sprite(p.x, p.y, 'chars_raw', fk(ci, 1, 0))
+      spr.setScale(1.0).setDepth(1 + p.y / 1000)
+      this.sprites.set(id, spr)
+    }
   }
 
   // ── Update person ────────────────────────────────────────────────────────────
@@ -273,7 +343,10 @@ export class ParkScene extends Phaser.Scene {
 
   private depart(p: Person) {
     if (p.visitCount===1 && Math.random()<P_RETURN) {
-      this.returnQueue.push({ data:{name:p.name,isFemale:p.isFemale,opinion:p.opinion,visitCount:p.visitCount,charIdx:p.charIdx,color:p.color,thought:p.thought}, delay:10000+Math.random()*20000 })
+      this.returnQueue.push({
+        data: { name:p.name, isFemale:p.isFemale, opinion:p.opinion, visitCount:p.visitCount, charIdx:p.charIdx, color:p.color, thought:p.thought, useLPC:p.useLPC, lpcSkin:p.lpcSkin, lpcHair:p.lpcHair, lpcShirt:p.lpcShirt, lpcPants:p.lpcPants },
+        delay: 10000+Math.random()*20000,
+      })
     }
     p.state='departing'; p.stateTimer=0
   }
@@ -423,13 +496,23 @@ export class ParkScene extends Phaser.Scene {
 
   private drawPersonPanel(g: Phaser.GameObjects.Graphics, p: Person) {
     const py=this.panelY, s=this.fs, pz=40*s, l=16, r=this.W-16
-    // Portrait: draw current character frame large
-    const frameKey = fk(p.charIdx, p.state==='viewing'||p.state==='phone'||p.state==='chatting' ? 3 : 1, 0)
-    const portraitSprite = this.add.image(l+pz/2, py+8+pz/2, 'chars_raw', frameKey)
-    portraitSprite.setScale(pz/FW).setDepth(101)
-    this.time.delayedCall(50, () => { if (portraitSprite?.active) portraitSprite.destroy() })
-
     const tx=l+pz+12
+
+    // Portrait
+    if (p.useLPC) {
+      const tints = [LPC_SKIN_TONES[p.lpcSkin]!, LPC_HAIR_COLORS[p.lpcHair]!, LPC_PANTS_COLORS[p.lpcPants]!, LPC_SHIRT_COLORS[p.lpcShirt]!]
+      for (let i = 0; i < LPC_LAYERS.length; i++) {
+        const portraitSpr = this.add.image(l+pz/2, py+8+pz/2, LPC_LAYERS[i]!, `${LPC_ROW_BACK}_0`)
+        portraitSpr.setScale(pz / LPC_FH).setDepth(101 + i * 0.001).setTint(tints[i]!)
+        this.time.delayedCall(50, () => { if (portraitSpr?.active) portraitSpr.destroy() })
+      }
+    } else {
+      const frameKey = fk(p.charIdx, p.state==='viewing'||p.state==='phone'||p.state==='chatting' ? 3 : 1, 0)
+      const portraitSpr = this.add.image(l+pz/2, py+8+pz/2, 'chars_raw', frameKey)
+      portraitSpr.setScale(pz/FW).setDepth(101)
+      this.time.delayedCall(50, () => { if (portraitSpr?.active) portraitSpr.destroy() })
+    }
+
     g.fillStyle(p.color); print(g,p.name,tx,py+10,s)
     g.fillStyle(EGA.DARK_GRAY); print(g,p.isFemale?'SHE/HER':'HE/HIM',tx,py+10+14*s,1)
     if (p.isReturn) { g.fillStyle(EGA.YELLOW); print(g,`VISIT #${p.visitCount}`,tx+60*s,py+10+14*s,1) }
