@@ -257,9 +257,9 @@ export class ParkScene extends Phaser.Scene {
     const dir   = (Math.random() < 0.5 ? 1 : -1) as 1|-1
     const id    = this.nextId++
     const fem   = ret ? ret.isFemale : Math.random() < 0.5
-    const op    = ret ? ret.opinion  : Math.random() < 0.62
+    const op    = ret ? ret.opinion : false   // opinion forms on first sight, not at spawn
     const name  = ret ? ret.name : ((fem ? FEMALE_NAMES : MALE_NAMES)[Math.floor(Math.random() * 500)] ?? 'Billy')
-    const thought = (ret ? ret.thought : (op ? THOUGHTS_POS : THOUGHTS_NEG)[Math.floor(Math.random() * 8)]) ?? 'WOW'
+    const thought = ret ? ret.thought : ''    // thought forms when they notice the wall
     const ci    = ret ? ret.charIdx : Math.floor(Math.random() * NUM_CHARS)
     const useLPC = ret ? ret.useLPC : false
     const lpcSkin  = ret ? ret.lpcSkin  : Math.floor(Math.random() * LPC_SKIN_TONES.length)
@@ -323,6 +323,9 @@ export class ParkScene extends Phaser.Scene {
           if (p.dir===1 ? p.x>=tx : p.x<=tx) {
             p.hasReacted = true
             if (p.willStop) {
+              // Form opinion on first sight
+              p.opinion = Math.random() < 0.62
+              p.thought = ((p.opinion ? THOUGHTS_POS : THOUGHTS_NEG)[Math.floor(Math.random() * 8)]) ?? 'WOW'
               p.state='slowing'; p.stateTimer=0; this.stats.stopped++
               p.noticeGlyph='?'; p.noticeTimer=900
               this.sentiment = Math.max(0, Math.min(100, this.sentiment + (p.opinion ? 1 : -0.5)))
