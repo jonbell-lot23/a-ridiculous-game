@@ -218,11 +218,12 @@ export class ParkScene extends Phaser.Scene {
     spr.x = p.x; spr.y = p.y; spr.setDepth(1 + p.y / 1000)
     const atWall = p.state==='viewing'||p.state==='phone'||p.state==='chatting'
     const moving = p.state==='walking'||p.state==='departing'||p.state==='slowing'
-    const key    = atWall ? `${p.charIdx}:back` : `${p.charIdx}:walk`
-    if (moving || atWall) {
+    if (moving) {
+      const key = `${p.charIdx}:walk`
       if (spr.anims.currentAnim?.key !== key || !spr.anims.isPlaying) spr.anims.play(key, true)
     } else {
-      spr.anims.stop(); spr.setFrame(fk(p.charIdx, atWall ? 3 : 1, 0))
+      spr.anims.stop()
+      spr.setFrame(fk(p.charIdx, atWall ? 3 : 1, 0))
     }
     spr.setFlipX(!atWall && p.dir === 1)
     spr.clearTint()
@@ -238,11 +239,12 @@ export class ParkScene extends Phaser.Scene {
     for (let i = 0; i < sprs.length; i++) {
       const spr = sprs[i]!
       spr.x = p.x; spr.y = p.y; spr.setDepth(depth + i * 0.0001)
-      const key = `${LPC_LAYERS[i]}:${atWall ? 'back' : 'walk'}`
-      if (moving || atWall) {
+      if (moving) {
+        const key = `${LPC_LAYERS[i]}:walk`
         if (spr.anims.currentAnim?.key !== key || !spr.anims.isPlaying) spr.anims.play(key, true)
       } else {
-        spr.anims.stop(); spr.setFrame(`${atWall ? LPC_ROW_BACK : LPC_ROW_WALK}_0`)
+        spr.anims.stop()
+        spr.setFrame(`${atWall ? LPC_ROW_BACK : LPC_ROW_WALK}_0`)
       }
       spr.setFlipX(!atWall && p.dir === -1)
     }
