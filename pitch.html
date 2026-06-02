@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A Ridiculous Game — Design Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #161616;
+      --border:   #2a2a2a;
+      --text:     #e0e0e0;
+      --muted:    #666;
+      --cyan:     #55ffff;
+      --yellow:   #ffff55;
+      --green:    #55ff55;
+      --red:      #ff5555;
+      --magenta:  #ff55ff;
+      --blue:     #5555ff;
+      --brown:    #aa5500;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    a { color: var(--cyan); text-decoration: none; }
+
+    /* ── Layout ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 60px 32px 120px; }
+
+    section { margin-bottom: 64px; }
+
+    h1 { font-size: 48px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+    h2 { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    p  { color: #aaa; margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── Hero ── */
+    .hero { padding: 80px 0 48px; border-bottom: 1px solid var(--border); margin-bottom: 64px; }
+    .hero .tag { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--cyan); margin-bottom: 20px; }
+    .hero h1 span { color: var(--yellow); }
+    .hero .pitch { font-size: 20px; color: #aaa; font-weight: 300; margin-top: 20px; max-width: 600px; line-height: 1.5; }
+    .hero .meta { margin-top: 32px; font-size: 12px; color: var(--muted); display: flex; gap: 24px; }
+    .hero .meta span { display: flex; align-items: center; gap: 6px; }
+    .hero .meta b { color: #888; }
+
+    /* ── Inspirations ── */
+    .inspirations { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .inspo-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+    }
+    .inspo-card .game-name { font-size: 13px; font-weight: 600; color: var(--cyan); margin-bottom: 4px; }
+    .inspo-card .platform { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+    .inspo-card .what-we-borrow { font-size: 13px; color: #999; line-height: 1.5; }
+    .inspo-card .what-we-borrow strong { color: var(--yellow); font-weight: 500; }
+
+    /* ── Synthesis callout ── */
+    .callout {
+      background: var(--surface);
+      border-left: 3px solid var(--cyan);
+      border-radius: 0 6px 6px 0;
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+    .callout p { color: var(--text); font-size: 16px; line-height: 1.7; }
+    .callout p em { color: var(--yellow); font-style: normal; }
+
+    /* ── Setting ── */
+    .setting-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 8px; }
+    .setting-block h3 { color: var(--yellow); }
+
+    /* ── Mechanics ── */
+    .mechanic {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 24px;
+      margin-bottom: 16px;
+      background: var(--surface);
+    }
+    .mechanic-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+    .mechanic-header h3 { margin: 0; }
+    .mechanic-header .layer { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+    .mechanic-header .source { font-size: 11px; color: var(--muted); margin-left: auto; font-style: italic; }
+    .mechanic p { font-size: 14px; }
+    .mechanic .example {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: var(--bg);
+      border-radius: 4px;
+      font-size: 13px;
+      color: #888;
+      font-style: italic;
+      border-left: 2px solid var(--border);
+    }
+    .mechanic .example strong { color: var(--cyan); font-style: normal; }
+
+    /* Layer accent colors */
+    .mechanic.tsubasa { border-top: 2px solid var(--cyan); }
+    .mechanic.nobunaga { border-top: 2px solid var(--yellow); }
+    .mechanic.persona  { border-top: 2px solid var(--magenta); }
+    .mechanic.tsubasa  .mechanic-header h3 { color: var(--cyan); }
+    .mechanic.nobunaga .mechanic-header h3 { color: var(--yellow); }
+    .mechanic.persona  .mechanic-header h3 { color: var(--magenta); }
+
+    /* ── Characters ── */
+    .characters { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .char-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 14px;
+    }
+    .char-card .char-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .char-card .char-role { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+    .char-card .stat { font-size: 12px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+    .char-card .stat .label { color: var(--muted); }
+    .char-card .stat .val { color: var(--text); text-align: right; }
+    .char-card .secret { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-style: italic; }
+    .ren    { border-top: 2px solid var(--cyan); }     .ren    .char-name { color: var(--cyan); }
+    .hana   { border-top: 2px solid var(--green); }    .hana   .char-name { color: var(--green); }
+    .gorou  { border-top: 2px solid #aa7700; }         .gorou  .char-name { color: #cc9900; }
+    .miko   { border-top: 2px solid var(--magenta); }  .miko   .char-name { color: var(--magenta); }
+    .daichi { border-top: 2px solid var(--red); }      .daichi .char-name { color: var(--red); }
+
+    /* ── Calendar ── */
+    .calendar-visual {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .day {
+      width: 28px;
+      height: 28px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .day.early  { background: #1a2a1a; color: var(--green); }
+    .day.mid    { background: #1a1a2a; color: #7777ff; }
+    .day.late   { background: #2a1a1a; color: var(--red); }
+    .day.final  { background: #3a1a1a; color: var(--red); border: 1px solid var(--red); }
+    .calendar-legend { display: flex; gap: 20px; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+    .calendar-legend span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+    /* ── Day in the life ── */
+    .timeline { position: relative; padding-left: 24px; }
+    .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+    .tl-item { position: relative; margin-bottom: 24px; }
+    .tl-item::before { content: ''; position: absolute; left: -21px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+    .tl-item.tsubasa::before { background: var(--cyan); }
+    .tl-item.nobunaga::before { background: var(--yellow); }
+    .tl-item.persona::before { background: var(--magenta); }
+    .tl-item .time { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .tl-item h3 { font-size: 15px; margin-bottom: 4px; }
+    .tl-item p { font-size: 14px; margin: 0; }
+
+    /* ── What's next ── */
+    .questions { list-style: none; }
+    .questions li {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: #aaa;
+      display: flex;
+      gap: 12px;
+    }
+    .questions li::before { content: '?'; color: var(--yellow); font-weight: 700; flex-shrink: 0; }
+    .questions li:last-child { border-bottom: none; }
+
+    /* ── Footer ── */
+    .footer { padding-top: 40px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+
+    @media (max-width: 700px) {
+      .inspirations { grid-template-columns: 1fr; }
+      .characters { grid-template-columns: 1fr 1fr; }
+      .setting-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="tag">Game Design Pitch · June 2026 · Work in Progress</div>
+    <h1>A <span>Ridiculous</span> Game</h1>
+    <p class="pitch">
+      A traveling crew. A town with three factions. 30 days to build something
+      that makes people feel less alone. Every relationship is a resource.
+      Every day is a choice you can't undo.
+    </p>
+    <div class="meta">
+      <span><b>Genre</b> Strategy / Social RPG / Installation Art Sim</span>
+      <span><b>Aesthetic</b> EGA Pixel, Maniac Mansion era</span>
+      <span><b>Engine</b> Phaser 4 + Bun</span>
+    </div>
+  </div>
+
+  <!-- INSPIRATIONS -->
+  <section>
+    <h2>Where It Comes From</h2>
+    <div class="inspirations">
+      <div class="inspo-card">
+        <div class="game-name">Captain Tsubasa</div>
+        <div class="platform">Tecmo · Super Famicom · 1992–94</div>
+        <div class="what-we-borrow">
+          Borrowing: <strong>the frozen moment.</strong> When a confrontation begins,
+          time stops. Both sides pick a move in secret. Both reveal simultaneously.
+          Sport as a series of dramatic, bluffable duels — not a physics simulation.
+        </div>
+      </div>
+      <div class="inspo-card">
+        <div class="game-name">Nobunaga's Ambition</div>
+        <div class="platform">Koei · SNES · 1993</div>
+        <div class="what-we-borrow">
+          Borrowing: <strong>place as organism.</strong> Each territory has loyalty,
+          development, morale. Neglect one province while fighting another and it
+          collapses. Named officers who age, defect, die. Soft power before violence.
+        </div>
+      </div>
+      <div class="inspo-card">
+        <div class="game-name">Persona 3</div>
+        <div class="platform">Atlus · PlayStation 2 · 2006</div>
+        <div class="what-we-borrow">
+          Borrowing: <strong>relationships as the real game.</strong> Social bonds
+          directly power your ability to act. A calendar that makes every day
+          irreversible. One action before bed. The dungeon is the payoff — the day
+          is the game.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p>
+        All three games share one idea Western design missed: <em>combat is the surface layer, not the core.</em>
+        The action is the payoff for investment in a deeper systemic layer. This game applies that idea
+        to something real — building public art in a specific place, with specific people, in limited time.
+      </p>
+    </div>
+  </section>
+
+  <!-- SETTING -->
+  <section>
+    <h2>The World</h2>
+    <div class="setting-grid">
+      <div class="setting-block">
+        <h3>The Circuit</h3>
+        <p>
+          A small crew that travels from town to town building connection infrastructure —
+          temporary public installations, light works, experience design. They arrive
+          with a van, a plan, and 30 days. Then they leave. What they built stays.
+        </p>
+        <p>
+          Inspired by real companies like teamLab, Moment Factory, and the work of
+          Rafael Lozano-Hemmer. The "installation" is a LED work on the face of a
+          public building. It responds to the community. It stores collective memory.
+        </p>
+      </div>
+      <div class="setting-block">
+        <h3>The Town</h3>
+        <p>
+          Every town has the same three forces in different proportions:
+        </p>
+        <p>
+          <strong style="color:var(--cyan)">The Council</strong> — controls money and permits.
+          Transactional. Wants ROI.<br>
+          <strong style="color:var(--green)">The Collective</strong> — controls space and people.
+          Ideological. Wants ownership.<br>
+          <strong style="color:#cc9900)">The Elders</strong> — controls meaning and memory.
+          Cultural. Wants respect, not just acknowledgment.
+        </p>
+        <p>None of them fully trust each other. None of them fully trust you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MECHANICS -->
+  <section>
+    <h2>How It Works — Three Layers</h2>
+
+    <div class="mechanic tsubasa">
+      <div class="mechanic-header">
+        <h3>The Confrontation</h3>
+        <span class="layer">Layer 1</span>
+        <span class="source">← Captain Tsubasa</span>
+      </div>
+      <p>
+        When you enter a significant meeting, negotiation, or stand-off, time freezes.
+        The screen shifts to a close-up. Both you and your opponent secretly choose
+        a posture: <strong>Challenge</strong>, <strong>Yield</strong>, <strong>Redirect</strong>, or <strong>Hold</strong>.
+        Both are revealed simultaneously. The outcome depends on the combination —
+        not on a stat check, but on reading the other person correctly.
+      </p>
+      <p>
+        Each character has a <strong>Guts</strong> meter. Your best moves cost Guts.
+        Run low and your options thin. This is the "what do you want to do?" moment
+        from the soccer game Jon played as a kid. The drama is real because the opponent's
+        choice is hidden until the reveal.
+      </p>
+      <div class="example">
+        <strong>Example:</strong> The Council chair is about to reject your permit.
+        You choose Redirect — pivot to the economic angle. He chose Challenge —
+        expected you to defend the art. Your Redirect lands. He's off-footing.
+        You gain a concession.
+      </div>
+    </div>
+
+    <div class="mechanic nobunaga">
+      <div class="mechanic-header">
+        <h3>The Territory</h3>
+        <span class="layer">Layer 2</span>
+        <span class="source">← Nobunaga's Ambition</span>
+      </div>
+      <p>
+        The town is divided into zones — each with its own stats: <strong>Trust</strong>,
+        <strong>Access</strong>, and <strong>Resonance</strong>. Trust drops if you ignore
+        a faction. Access closes if Trust falls too low. Resonance measures how much
+        the community has internalized what you're building — high Resonance means the
+        installation means something here; low Resonance means it's just a screen.
+      </p>
+      <p>
+        Each crew member you assign to a zone affects it differently. Hana's espionage
+        reveals hidden agendas. Gorou's field presence boosts Access. Miko's relationship
+        work builds Trust. You can't be everywhere. You choose where to invest and what
+        to let slide.
+      </p>
+      <div class="example">
+        <strong>Example:</strong> You've been neglecting the Collective to focus on the
+        Council. Their Trust drops to 30. They start a counter-narrative on local social
+        media. The Council hears about it. Your Access to the building site falls.
+        You didn't fight anyone — you just didn't show up.
+      </div>
+    </div>
+
+    <div class="mechanic persona">
+      <div class="mechanic-header">
+        <h3>The Relationship</h3>
+        <span class="layer">Layer 3</span>
+        <span class="source">← Persona 3</span>
+      </div>
+      <p>
+        Each character on your crew has a Social Link — a story arc across up to 10
+        ranked encounters. Leveling a Social Link unlocks new confrontation options,
+        zone-specific bonuses, and alternate endings. Neglecting a character long enough
+        causes them to drift — and Daichi will defect entirely.
+      </p>
+      <p>
+        Social Links also connect to townspeople. The Elders' liaison, the Collective's
+        organizer, the Council's deputy — each is a character with their own arc.
+        Building those bonds changes what's possible in Layer 1 and Layer 2.
+        <strong>Relationships are the primary progression system.</strong>
+      </p>
+      <div class="example">
+        <strong>Example:</strong> You've built Miko's Social Link to Rank 6. She can now
+        read the Collective organizer's tells before a Confrontation starts — you see
+        a hint of her likely choice. It's not a guaranteed win. It's an edge.
+      </div>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section>
+    <h2>The Calendar</h2>
+    <p style="color:#aaa; margin-bottom: 16px;">
+      You have exactly 30 days. Each day has a morning slot and an evening slot.
+      You choose one thing per slot. Some things are time-locked — miss the window
+      and it's gone. The installation date is fixed. The calendar fills up faster than you expect.
+    </p>
+    <div class="calendar-legend">
+      <span><span class="dot" style="background:#1a2a1a"></span> Days 1–10: establish</span>
+      <span><span class="dot" style="background:#1a1a2a"></span> Days 11–22: build</span>
+      <span><span class="dot" style="background:#2a1a1a"></span> Days 23–28: crisis</span>
+      <span><span class="dot" style="background:#3a1a1a; border:1px solid #ff5555"></span> Days 29–30: launch</span>
+    </div>
+    <div class="calendar-visual">
+      <!-- Days 1-10: early -->
+      <div class="day early">1</div><div class="day early">2</div><div class="day early">3</div>
+      <div class="day early">4</div><div class="day early">5</div><div class="day early">6</div>
+      <div class="day early">7</div><div class="day early">8</div><div class="day early">9</div>
+      <div class="day early">10</div>
+      <!-- Days 11-22: mid -->
+      <div class="day mid">11</div><div class="day mid">12</div><div class="day mid">13</div>
+      <div class="day mid">14</div><div class="day mid">15</div><div class="day mid">16</div>
+      <div class="day mid">17</div><div class="day mid">18</div><div class="day mid">19</div>
+      <div class="day mid">20</div><div class="day mid">21</div><div class="day mid">22</div>
+      <!-- Days 23-28: late -->
+      <div class="day late">23</div><div class="day late">24</div><div class="day late">25</div>
+      <div class="day late">26</div><div class="day late">27</div><div class="day late">28</div>
+      <!-- Days 29-30: final -->
+      <div class="day final">29</div><div class="day final">30</div>
+    </div>
+    <p style="font-size:13px; color:var(--muted)">
+      You cannot do everything. That's the game. What you choose not to do shapes the ending as much as what you do.
+    </p>
+  </section>
+
+  <!-- CHARACTERS -->
+  <section>
+    <h2>The Crew</h2>
+    <div class="characters">
+      <div class="char-card ren">
+        <div class="char-name">Ren</div>
+        <div class="char-role">Protagonist</div>
+        <div class="stat"><span class="label">Best</span><span class="val">Adaptable</span></div>
+        <div class="stat"><span class="label">Worst</span><span class="val">Confidence</span></div>
+        <div class="stat"><span class="label">Special</span><span class="val">Can equip any mask</span></div>
+        <div class="secret">You're not the best at anything. But you listen.</div>
+      </div>
+      <div class="char-card hana">
+        <div class="char-name">Hana</div>
+        <div class="char-role">Strategist</div>
+        <div class="stat"><span class="label">Best</span><span class="val">Intelligence</span></div>
+        <div class="stat"><span class="label">Worst</span><span class="val">Patience</span></div>
+        <div class="stat"><span class="label">Special</span><span class="val">Reveals agendas</span></div>
+        <div class="secret">Has a plan she hasn't told you yet.</div>
+      </div>
+      <div class="char-card gorou">
+        <div class="char-name">Gorou</div>
+        <div class="char-role">Veteran</div>
+        <div class="stat"><span class="label">Best</span><span class="val">Field ability</span></div>
+        <div class="stat"><span class="label">Worst</span><span class="val">Declining each season</span></div>
+        <div class="stat"><span class="label">Special</span><span class="val">Clock is visible</span></div>
+        <div class="secret">He knows. You both know. Neither says it.</div>
+      </div>
+      <div class="char-card miko">
+        <div class="char-name">Miko</div>
+        <div class="char-role">Negotiator</div>
+        <div class="stat"><span class="label">Best</span><span class="val">Empathy</span></div>
+        <div class="stat"><span class="label">Worst</span><span class="val">Self-knowledge</span></div>
+        <div class="stat"><span class="label">Special</span><span class="val">Reads tells</span></div>
+        <div class="secret">Will leave if her values are violated.</div>
+      </div>
+      <div class="char-card daichi">
+        <div class="char-name">Daichi</div>
+        <div class="char-role">Wild Card</div>
+        <div class="stat"><span class="label">Best</span><span class="val">Raw ability</span></div>
+        <div class="stat"><span class="label">Worst</span><span class="val">Loyalty (low)</span></div>
+        <div class="stat"><span class="label">Special</span><span class="val">Can defect</span></div>
+        <div class="secret">Highest ceiling. Highest risk. Your call.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A DAY IN THE GAME -->
+  <section>
+    <h2>A Day in the Game</h2>
+    <div class="timeline">
+      <div class="tl-item nobunaga">
+        <div class="time">Morning · Territory</div>
+        <h3>Check the Zone Report</h3>
+        <p>Trust levels updated overnight. The Collective dropped 8 points — someone talked. You decide where to send Hana.</p>
+      </div>
+      <div class="tl-item persona">
+        <div class="time">Morning Slot · Relationship</div>
+        <h3>Coffee with the Elders' Liaison</h3>
+        <p>Miko's Social Link Rank 4. You learn the Elders have a grievance that predates you. This shapes Day 18's confrontation.</p>
+      </div>
+      <div class="tl-item tsubasa">
+        <div class="time">Afternoon · Confrontation</div>
+        <h3>Emergency Council Meeting</h3>
+        <p>Permit review triggered by the Collective's social media push. Frozen moment. You choose Redirect. The chair chose Challenge. It lands — barely. Guts cost: 20.</p>
+      </div>
+      <div class="tl-item nobunaga">
+        <div class="time">Afternoon Slot · Territory</div>
+        <h3>Gorou on-site at the building</h3>
+        <p>Access +12. He's the best at this. You note the bar on his clock moved again.</p>
+      </div>
+      <div class="tl-item persona">
+        <div class="time">Evening · Relationship</div>
+        <h3>One action before bed</h3>
+        <p>Train Ren's Confidence, spend time with Daichi (loyalty at 42 — borderline), or rest to recover Guts. You can't do all three. Day 12 of 30.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPEN QUESTIONS -->
+  <section>
+    <h2>Still Open</h2>
+    <ul class="questions">
+      <li>Does the game move between multiple towns (campaign) or go deep on one town (single arc)?</li>
+      <li>How much do player choices change the installation's final form? Is the ending visual, narrative, or both?</li>
+      <li>Is there a failure state, or does every run produce an ending that reflects what you chose?</li>
+      <li>What does the confrontation screen look like — is it full-screen drama, or subtle?</li>
+      <li>Should the Elders layer involve a cultural advisory mechanic (parallel to real Hearthwell process)?</li>
+      <li>Multiplayer? (Two players as co-directors — each controlling different crew members.)</li>
+    </ul>
+  </section>
+
+  <div class="footer">
+    <span>A Ridiculous Game · vibe-coded · June 2026</span>
+    <span>Built with Jon · Claude Sonnet 4.6 · Phaser 4</span>
+  </div>
+
+</div>
+</body>
+</html>

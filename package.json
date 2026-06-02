@@ -1,0 +1,16 @@
+{
+  "name": "a-ridiculous-game",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "vite": "^8.0.15"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "phaser": "^4.1.0"
+  }
+}
